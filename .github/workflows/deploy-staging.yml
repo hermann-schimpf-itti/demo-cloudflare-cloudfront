@@ -79,7 +79,7 @@ jobs:
 
           SLS_SERVICE: ${{ vars.SLS_SERVICE || 'app' }}
           SLS_BASE_DOMAIN: ${{ vars.SLS_BASE_DOMAIN || 'example.com' }}
-          SLS_CERTIFICATE_ARN: ${{ secrets.STAGING_SLS_CERTIFICATE_ARN }}
+          SLS_CERTIFICATE_ARN: ${{ secrets.SLS_CERTIFICATE_ARN }}
         uses: serverless/github-action@v3
         with:
           args: deploy --region=${{ secrets.AWS_DEFAULT_REGION || 'us-east-1' }} --stage=production
