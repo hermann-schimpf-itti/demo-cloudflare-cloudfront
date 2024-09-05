@@ -1,4 +1,6 @@
 import './bootstrap';
+// @ts-ignore import all images
+import.meta.glob([ '../images/**' ]);
 
 import {createSSRApp, DefineComponent, h} from 'vue';
 import {createInertiaApp} from '@inertiajs/vue3';
@@ -14,13 +16,13 @@ createInertiaApp({
         const module: string[] = name.split('::');
 
         if (module.length > 1) {
-            return resolvePageComponent(`../../modules/${module[0]}/resources/vue/${module[1]}.vue`,
-                import.meta.glob<DefineComponent>('../../modules/*/resources/vue/**/*.vue'),
+            return resolvePageComponent(`../../../modules/${module[0]}/resources/vue/${module[1]}.vue`,
+                import.meta.glob<DefineComponent>('../../../modules/*/resources/vue/**/*.vue'),
             );
         }
 
-        return resolvePageComponent(`../vue/${name}.vue`,
-            import.meta.glob<DefineComponent>('../vue/**/*.vue'),
+        return resolvePageComponent(`../../vue/${name}.vue`,
+            import.meta.glob<DefineComponent>('../../vue/**/*.vue'),
         );
     },
 

@@ -43,17 +43,20 @@
         "paths": {
             "@ziggy-js": [ "./vendor/tightenco/ziggy" ],
 
+             "@/assets": [ "./resources/assets" ],
+             "@/Frontend/*": [ "./modules/Frontend/resources/vue/*" ],
+
             "@/*": [ "./resources/vue/*" ],
             "~/*": [ "./modules/*" ]
         }
     },
     "include": [
-        "resources/js/**/*.ts",
-        "resources/js/**/*.d.ts",
+        "resources/assets/js/**/*.ts",
+        "resources/assets/js/**/*.d.ts",
         "resources/vue/**/*.vue",
 
-        "modules/*/resources/js/**/*.ts",
-        "modules/*/resources/js/**/*.d.ts",
+        "modules/*/resources/assets/js/**/*.ts",
+        "modules/*/resources/assets/js/**/*.d.ts",
         "modules/*/resources/vue/**/*.vue"
     ]
 }

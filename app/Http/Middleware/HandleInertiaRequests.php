@@ -1,27 +1,36 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
 use Illuminate\Http\Request;
 use Inertia\Middleware;
-use Tighten\Ziggy\Ziggy;
 
-class HandleInertiaRequests extends Middleware
-{
+final class HandleInertiaRequests extends Middleware {
 
     /**
      * Define the props that are shared by default.
      *
      * @return array<string, mixed>
      */
-    public function share(Request $request): array
-    {
+    public function share(Request $request): array {
         return [
             ...parent::share($request),
-            'ziggy' => fn () => [
-                ...(new Ziggy)->toArray(),
-                'location' => $request->url(),
+            'route' => [
+                'name' => fn () => $request->route()?->getName(),
+            ],
+            'flash' => [
+                'message' => fn () => $request->session()->get('message'),
+            ],
+            'auth' => [
+                'user' => fn() => $request->user() ? [
+                    'name' => $request->user()->name,
+                    'email' => $request->user()->email,
+                    'email_validated' => $request->user()->hasVerifiedEmail(),
+                ] : null,
             ],
         ];
     }
+
 }

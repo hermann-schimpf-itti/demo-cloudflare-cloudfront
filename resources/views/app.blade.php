@@ -10,19 +10,30 @@
         {{-- Fonts --}}
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        {{-- Favicon --}}
+        <link rel="icon" type="image/png" href="{{ Vite::asset('resources/assets/images/favicons/128x128.png') }}">
 
         {{-- Scripts --}}
         @routes
         @php
-            $module = explode('::', $page['component']);
+            $resources = [ 'resources/assets/js/app.ts', 'resources/assets/css/app.css' ];
+            $module = explode('::', $page['component'] ?? null);
             $component = count($module) > 1
-                ? "modules/{$module[0]}/resources/vue/{$module[1]}.vue"
-                : "resources/vue/{$page['component']}.vue";
+                ? sprintf('modules/%s/resources/vue/%s.vue', $module[0], $module[1])
+                : sprintf('resources/vue/%s.vue', $page['component'] ?? null);
+            if (file_exists($component)) {
+                $resources[] = $component;
+            }
         @endphp
-        @vite([ 'resources/js/app.ts', 'resources/css/app.css', $component ])
-        @inertiaHead
+        @vite($resources)
+        @if (isset($page))
+            @inertiaHead
+        @endif
     </head>
+
     <body class="font-sans antialiased">
-        @inertia
+        @if (isset($page))
+            @inertia
+        @endif
     </body>
 </html>

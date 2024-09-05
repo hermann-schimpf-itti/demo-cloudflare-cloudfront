@@ -2,37 +2,25 @@
 
 namespace App\Providers;
 
-use Illuminate\Auth\Events\Registered;
-use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
-use Illuminate\Support\Facades\Event;
+use Nwidart\Modules\Facades\Module;
 
-class EventServiceProvider extends ServiceProvider
-{
-    /**
-     * The event to listener mappings for the application.
-     *
-     * @var array<class-string, array<int, class-string>>
-     */
-    protected $listen = [
-        Registered::class => [
-            SendEmailVerificationNotification::class,
-        ],
-    ];
+final class EventServiceProvider extends ServiceProvider {
 
-    /**
-     * Register any events for your application.
-     */
-    public function boot(): void
-    {
-        //
+    public function shouldDiscoverEvents(): bool {
+        return true;
     }
 
-    /**
-     * Determine if events and listeners should be automatically discovered.
-     */
-    public function shouldDiscoverEvents(): bool
-    {
-        return false;
+    protected function discoverEventsWithin(): array {
+        return [
+            $this->app->path('Listeners'),
+            ...array_map(
+                callback: static fn ($module) => sprintf('%s/%s/Listeners',
+                    config('modules.paths.modules'), $module->getName(),
+                ),
+                array: Module::allEnabled()
+            ),
+        ];
     }
+
 }

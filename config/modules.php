@@ -43,7 +43,7 @@ return [
             'routes/api'      => [ 'LOWER_NAME', 'STUDLY_NAME' ],
             'views/index'     => [ 'LOWER_NAME', 'STUDLY_NAME' ],
             // 'views/master'    => [ 'LOWER_NAME', 'STUDLY_NAME' ],
-            'scaffold/config' => [ 'STUDLY_NAME' ],
+            'scaffold/config' => [ 'LOWER_NAME', 'STUDLY_NAME' ],
             'json'            => [ 'LOWER_NAME', 'STUDLY_NAME', 'MODULE_NAMESPACE', 'PROVIDER_NAMESPACE' ],
             // 'composer'        => [ 'LOWER_NAME', 'STUDLY_NAME', 'VENDOR', 'AUTHOR_NAME', 'AUTHOR_EMAIL', 'MODULE_NAMESPACE', 'PROVIDER_NAMESPACE' ],
             // 'vite'            => [ 'LOWER_NAME' ],

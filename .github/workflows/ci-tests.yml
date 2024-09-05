@@ -1,28 +1,32 @@
 name: CI Tests
 
 on:
+  pull_request:
   workflow_call:
   schedule:
-    - cron: '0 0 * * *'
+    - cron: '0 0 * * 0'
 
 jobs:
   tests:
+    name: Run Tests on PHP ${{ matrix.php }}
     runs-on: ubuntu-latest
+    concurrency:
+      group: ci-tests-php-${{ matrix.php }}
+      cancel-in-progress: false
 
     strategy:
       matrix:
-        php: [8.1, 8.2, 8.3]
+        php: [8.3]
 
-    name: Run Tests on PHP ${{ matrix.php }}
     env:
       extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite, parallel
       key: extensions-cache-00
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Setup cache environment
-        id: extcache
+        id: extensions-cache
         uses: shivammathur/cache-extensions@v1
         with:
           php-version: ${{ matrix.php }}
@@ -30,11 +34,11 @@ jobs:
           key: ${{ env.key }}
 
       - name: Cache extensions
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
-          path: ${{ steps.extcache.outputs.dir }}
-          key: ${{ steps.extcache.outputs.key }}-${{ env.phpts }}
-          restore-keys: ${{ steps.extcache.outputs.key }}-${{ env.phpts }}
+          path: ${{ steps.extensions-cache.outputs.dir }}
+          key: "${{ steps.extensions-cache.outputs.key }}-${{ env.phpts }}"
+          restore-keys: "${{ steps.extensions-cache.outputs.key }}-${{ env.phpts }}"
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -47,9 +51,10 @@ jobs:
           coverage: none
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: 20
+          cache: 'npm'
 
       - name: Install Composer dependencies
         uses: ramsey/composer-install@v2
@@ -60,10 +65,15 @@ jobs:
         run: echo "APP_KEY=$(php artisan --no-ansi key:generate --show)" >> $GITHUB_ENV
 
       - name: Install Node dependencies
-        run: npm install
+        run: npm ci
 
       - name: Build frontend assets
         run: npm run build
 
       - name: Execute tests
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION || 'us-east-1' }}
+          DYNAMODB_DATA_TABLE: ${{ vars.SLS_SERVICE || 'app' }}-testing-data
         run: php artisan test --parallel

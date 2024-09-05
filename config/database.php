@@ -43,6 +43,19 @@ return [
             'foreign_key_constraints' => env('DB_FOREIGN_KEYS', true),
         ],
 
+        'dynamodb' => [
+            'driver'   => 'dynamodb',
+            'key'      => env('AWS_ACCESS_KEY_ID'),
+            'secret'   => env('AWS_SECRET_ACCESS_KEY'),
+            'region'   => env('AWS_DEFAULT_REGION', 'us-east-1'),
+            'token'    => env('AWS_SESSION_TOKEN'),
+            'endpoint' => env('DYNAMODB_ENDPOINT'),
+            'tables'   => [
+                'data' => env('DYNAMODB_DATA_TABLE'),
+            ],
+            'prefix' => '', // table prefix
+        ],
+
         'mysql' => [
             'driver'         => 'mysql',
             'url'            => env('DATABASE_URL'),
@@ -60,6 +73,7 @@ return [
             'engine'         => null,
             'options'        => extension_loaded('pdo_mysql') ? array_filter([
                 PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+                PDO::ATTR_PERSISTENT   => true,
             ]) : [],
         ],
 

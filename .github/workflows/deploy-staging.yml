@@ -3,63 +3,83 @@ name: Continuous Deployment (staging)
 on:
   push:
     branches:
-      - 'release/*'
+      - main
 
 jobs:
   tests:
+    name: Run CI Tests
     uses: ./.github/workflows/ci-tests.yml
+    secrets: inherit
 
   deployment:
+    name: Deploy to AWS
+    environment: staging
     runs-on: ubuntu-latest
     needs: tests
 
-    name: Deploy to AWS staging environment
-    if: ${{ success() }}
-
     env:
-      BREF_PHP_VERSION: ${{ vars.BREF_PHP_VERSION || '82' }}
+      extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite, parallel
+      key: extensions-cache-00
+
+      BREF_PHP_VERSION: ${{ vars.BREF_PHP_VERSION || '83' }}
       APP_NAME: ${{ vars.APP_NAME || 'Laravel' }}
       APP_ENV: staging
-      SLS_SERVICE: ${{ vars.SLS_SERVICE || 'app' }}
-      SLS_BASE_DOMAIN: ${{ vars.SLS_BASE_DOMAIN || 'example.com' }}
-      SLS_CERTIFICATE_ARN: ${{ secrets.SLS_CERTIFICATE_ARN }}
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      VITE_GOOGLE_RECAPTCHA_SITE_KEY_V3: ${{ secrets.GOOGLE_RECAPTCHA_SITE_KEY_V3 }}
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+
+      - name: Setup cache environment
+        id: extensions-cache
+        uses: shivammathur/cache-extensions@v1
+        with:
+          php-version: 8.3
+          extensions: ${{ env.extensions }}
+          key: ${{ env.key }}
+
+      - name: Cache extensions
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.extensions-cache.outputs.dir }}
+          key: "${{ steps.extensions-cache.outputs.key }}-${{ env.phpts }}"
+          restore-keys: "${{ steps.extensions-cache.outputs.key }}-${{ env.phpts }}"
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         env:
           phpts: ts
         with:
-          php-version: 8.2
-          extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite, parallel
+          php-version: 8.3
+          extensions: ${{ env.extensions }}
           ini-values: opcache.enable_cli=1, opcache.enable=1, opcache.jit_buffer_size=64M, opcache.jit=1205, opcache.enable_file_override=1, opcache.max_accelerated_files=4000, opcache.validate_timestamps=0, opcache.interned_strings_buffer=8
           coverage: none
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: '16'
+          node-version: 20
+          cache: 'npm'
 
       - name: Install Composer dependencies
         uses: ramsey/composer-install@v2
         with:
-          composer-options: --prefer-dist --optimize-autoloader --no-suggest --no-dev
-
-      - name: Generate App key for deployment
-        run: echo "APP_KEY=$(php artisan --no-ansi key:generate --show)" >> $GITHUB_ENV
+          composer-options: --prefer-dist --optimize-autoloader --no-dev
 
       - name: Install Node dependencies
-        run: npm install
+        run: npm ci
 
       - name: Build frontend assets
+        env:
+          VITE_APP_NAME: ${{ env.APP_NAME }}
         run: npm run build
 
       - name: Deploy to staging environment
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+          SLS_SERVICE: ${{ vars.SLS_SERVICE || 'app' }}
+          SLS_BASE_DOMAIN: ${{ vars.SLS_BASE_DOMAIN || 'example.com' }}
+          SLS_CERTIFICATE_ARN: ${{ secrets.STAGING_SLS_CERTIFICATE_ARN }}
         uses: serverless/github-action@v3
         with:
-          args: deploy --region=${{ secrets.AWS_REGION || 'us-east-1' }} --stage=staging
+          args: deploy --region=${{ secrets.AWS_DEFAULT_REGION || 'us-east-1' }} --stage=production

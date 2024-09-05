@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Providers;
 
@@ -10,7 +12,7 @@ use Illuminate\Support\Facades\Route;
 
 final class RouteServiceProvider extends ServiceProvider {
 
-    public const HOME = '/home';
+    public const HOME = 'index';
 
     public function boot(): void {
         RateLimiter::for('api', static function (Request $request) {
@@ -19,11 +21,11 @@ final class RouteServiceProvider extends ServiceProvider {
 
         $this->routes(function () {
             Route::middleware('api')
-                 ->prefix('api')
-                 ->group(base_path('routes/api.php'));
+                ->prefix('api')
+                ->group(base_path('routes/api.php'));
 
             Route::middleware('web')
-                 ->group(base_path('routes/web.php'));
+                ->group(base_path('routes/web.php'));
         });
     }
 

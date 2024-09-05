@@ -4,11 +4,11 @@ useDotenv: true
 
 provider:
   name: aws
-  region: us-east-1
+  region: sa-east-1
   stage: ${opt:stage, 'dev'}
 
   architecture: arm64
-  memorySize: 512
+  memorySize: 384
   logRetentionInDays: 90
 
   deploymentBucket:
@@ -18,6 +18,8 @@ provider:
   environment:
     # Application Settings
     BREF_BINARY_RESPONSES: true
+    BREF_LOOP_MAX: 512
+    OCTANE_HTTPS: true
 
     # Laravel settings
     APP_NAME: ${env:APP_NAME, 'Laravel'}
@@ -26,6 +28,10 @@ provider:
     APP_ENV: ${param:env}
     APP_DEBUG: ${param:debug}
     MAINTENANCE_MODE: ${param:maintenance, null}
+
+    SESSION_DOMAIN: '.${param:domain}'
+    SANCTUM_STATEFUL_DOMAINS: '${param:domain}'
+    CORS_ALLOWED_ORIGINS: bref-ssm:/${param:UUID}/CORS_ALLOWED_ORIGINS
 
     # Cache, Session, and Queue Settings
     CACHE_DRIVER: dynamodb
@@ -42,18 +48,15 @@ provider:
     AWS_BUCKET_PUBLIC: ${construct:assets.assetsBucketName}
 
     # Database Settings
-    DB_HOST: bref-ssm:/${param:UUID}/DB_HOST
-    DB_PORT: bref-ssm:/${param:UUID}/DB_PORT,3306
-    DB_DATABASE: bref-ssm:/${param:UUID}/DB_DATABASE
-    DB_USERNAME: bref-ssm:/${param:UUID}/DB_USERNAME
-    DB_PASSWORD: bref-ssm:/${param:UUID}/DB_PASSWORD
+    DB_CONNECTION: dynamodb
+    DYNAMODB_DATA_TABLE: !Ref DataTable
 
     # Mailer Settings
     MAIL_HOST: bref-ssm:/${param:UUID}/MAIL_HOST
-    MAIL_PORT: bref-ssm:/${param:UUID}/MAIL_PORT
+    MAIL_PORT: bref-ssm:/${param:UUID}/MAIL_PORT,465
     MAIL_USERNAME: bref-ssm:/${param:UUID}/MAIL_USERNAME
     MAIL_PASSWORD: bref-ssm:/${param:UUID}/MAIL_PASSWORD
-    MAIL_ENCRYPTION: bref-ssm:/${param:UUID}/MAIL_ENCRYPTION
+    MAIL_ENCRYPTION: bref-ssm:/${param:UUID}/MAIL_ENCRYPTION,ssl
     MAIL_FROM_ADDRESS: bref-ssm:/${param:UUID}/MAIL_FROM_ADDRESS
     MAIL_FROM_NAME: ${env:APP_NAME, 'Laravel'}
 
@@ -73,9 +76,14 @@ provider:
           Resource: arn:aws:ssm:${aws:region}:${aws:accountId}:parameter/${param:UUID}/*
           Action:
             - ssm:GetParameters
-        # Laravel Cache (DynamoDB)
+        # Laravel DynamoDB Cache & Single-Table Design
         - Effect: Allow
-          Resource: !GetAtt CacheTable.Arn
+          Resource:
+            - !GetAtt CacheTable.Arn
+            - !GetAtt DataTable.Arn
+            - !Sub
+              - '${Resource}/index/*'
+              - { Resource: !GetAtt DataTable.Arn }
           Action:
             - dynamodb:DescribeTable
             - dynamodb:Query
@@ -91,12 +99,15 @@ plugins:
 
 functions:
   laravel:
-    handler: public/index.php
-    runtime: ${param:php}-fpm
+    handler: Bref\LaravelBridge\Http\OctaneHandler
+    runtime: ${param:php}
     timeout: 28
     events:
       - httpApi: '*'
-    reservedConcurrency: 250
+      - schedule:
+          rate: rate(5 minutes)
+          input:
+              warmer: true
 
   artisan:
     handler: artisan
@@ -115,8 +126,6 @@ constructs:
     domain: ${param:domain}
     certificate: ${param:certificateArn}
     assets:
-#      '/js/*': public/js
-#      '/css/*': public/css
       '/build/*': public/build
       '/robots.txt': public/robots.txt
     extensions:
@@ -139,12 +148,11 @@ constructs:
       handler: Bref\LaravelBridge\Queue\QueueHandler
       runtime: ${param:php}
       timeout: 300
-      reservedConcurrency: 25
 
 params:
   default:
     UUID: ${self:service}-${sls:stage}
-    php: php-${env:BREF_PHP_VERSION, '82'}
+    php: php-${env:BREF_PHP_VERSION, '83'}
     domain: ${sls:stage}.${env:SLS_BASE_DOMAIN}
     certificateArn: ${env:SLS_CERTIFICATE_ARN}
     env: 'staging'
@@ -155,12 +163,41 @@ params:
     debug: 'false'
 
 resources:
-  - ${file(serverless/resources/cache.yml)}
+  - ${file(serverless/resources/dynamodb.yml)}
 
 package:
   patterns:
-    - '!node_modules/**'
-    - '!public/storage'
+    # exclude compiled resources that are uploaded to S3
+    - '!public/build'
+    - public/build/manifest.json
+    - '!public/vendor'
+    - '!public/robots.txt'
+    - '!public/.gitignore'
+    - '!public/.htaccess'
+    # exclude resources that are compiled
     - '!resources/assets/**'
+    - '!resources/vue/**'
+    - '!modules/*/resources/assets/**'
+    - '!modules/*/resources/vue/**'
+    - '!modules/*/Tests/**'
+    - '!modules/*/Widget/**'
+    # exclude temporal files
     - '!storage/**'
     - '!tests/**'
+    # exclude unneeded files/folders and local environment configuration
+    - '!.idea/**'
+    - '!.github/**'
+    - '!docs/**'
+    - '!stubs/**'
+    - '!node_modules/**'
+    - '!serverless/**'
+    - '!composer.lock'
+    - '!package*'
+    - '!postcss.config.js'
+    - '!tailwind.config.js'
+    - '!vite.config.js'
+    - '!tsconfig.json'
+    - '!README.md'
+    - '!.editorconfig'
+    - '!.gitattributes'
+    - '!phpunit.xml'
