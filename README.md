@@ -4,6 +4,8 @@
 [![Total Downloads](https://img.shields.io/packagist/dt/hds-solutions/laravel?style=flat-square&label=Downloads&color=878787)](https://packagist.org/packages/hds-solutions/laravel)
 [![Required PHP version](https://img.shields.io/packagist/dependency-v/hds-solutions/laravel/php?style=flat-square&label=PHP&color=006496&logo=php&logoColor=white)](https://packagist.org/packages/hds-solutions/laravel)
 
+# Demo Cloudflare > AWS Cloudfront
+
 ## Custom Laravel Scaffold
 
 Hey there, fellow developers! This is my custom Laravel scaffold used for my personal projects.
