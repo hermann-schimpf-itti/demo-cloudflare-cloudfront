@@ -3,7 +3,7 @@ name: Continuous Deployment (staging)
 on:
   push:
     branches:
-      - main
+      - 10.x
 
 jobs:
   tests:
